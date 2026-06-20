@@ -1,4 +1,4 @@
-﻿"""
+"""
 MathType (MTEF) to LaTeX converter for Word (.docx) files.
 Replaces MathType equation OLE objects with $ct$ text.
 
@@ -303,6 +303,7 @@ def process_docx(input_path, output_path):
                 break
             parent = parent.getparent()
 
+
         if parent_r is None:
             continue
 
@@ -311,7 +312,37 @@ def process_docx(input_path, output_path):
 
     print(f"Replaced: {replaced}")
 
-    # Serialize back to XML bytes
+    # --- Apply Times New Roman 12pt to ALL runs in the document ---
+    W = W_NS
+    fmt_runs = doc_tree.xpath("//w:r", namespaces={"w": W})
+    fmt_count = 0
+    for run in fmt_runs:
+        rpr = run.find(f"{{{W}}}rPr")
+        if rpr is None:
+            rpr = etree.Element(f"{{{W}}}rPr")
+            run.insert(0, rpr)
+        rfonts = rpr.find(f"{{{W}}}rFonts")
+        if rfonts is None:
+            rfonts = etree.Element(f"{{{W}}}rFonts")
+            rpr.append(rfonts)
+        rfonts.set(f"{{{W}}}ascii", "Times New Roman")
+        rfonts.set(f"{{{W}}}hAnsi", "Times New Roman")
+        rfonts.set(f"{{{W}}}cs", "Times New Roman")
+        rfonts.set(f"{{{W}}}eastAsia", "Times New Roman")
+        sz = rpr.find(f"{{{W}}}sz")
+        if sz is None:
+            sz = etree.Element(f"{{{W}}}sz")
+            rpr.append(sz)
+        sz.set(f"{{{W}}}val", "24")
+        sz_cs = rpr.find(f"{{{W}}}szCs")
+        if sz_cs is None:
+            sz_cs = etree.Element(f"{{{W}}}szCs")
+            rpr.append(sz_cs)
+        sz_cs.set(f"{{{W}}}val", "24")
+        fmt_count += 1
+    print(f"Formatted {fmt_count} run(s) with Times New Roman 12pt")
+
+    # Serialize back to XML bytes and write final docx
     doc_xml_bytes = etree.tostring(
         doc_tree, encoding="utf-8", xml_declaration=True, standalone=True
     )
@@ -330,10 +361,9 @@ def process_docx(input_path, output_path):
         shutil.move(tmp_out, output_path)
         print(f"Saved: {output_path}")
     except Exception as e:
-        print(f"\n[ERROR] KhÃ´ng thá»ƒ ghi file káº¿t quáº£ vÃ o '{output_path}'.")
-        print("CÃ³ thá»ƒ file nÃ y Ä‘ang Ä‘Æ°á»£c má»Ÿ báº±ng Word. Vui lÃ²ng Ä‘Ã³ng Word vÃ  thá»­ láº¡i!")
-        print(f"Chi tiáº¿t lá»—i: {e}\n")
-        # Try to clean up temp file if possible
+        print(f"\n[ERROR] Khong the ghi file ket qua vao '{output_path}'.")
+        print("Co the file nay dang duoc mo bang Word. Vui long dong Word va thu lai!")
+        print(f"Chi tiet loi: {e}\n")
         try:
             if os.path.exists(tmp_out):
                 os.remove(tmp_out)
