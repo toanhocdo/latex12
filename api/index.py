@@ -5,7 +5,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Add parent to path
+# Add parent to path so we can import convert_mathtype_to_latex
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from convert_mathtype_to_latex import process_docx
@@ -17,6 +17,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 def allowed_file(filename):
     return filename.lower().endswith('.docx')
 
+@app.route('/')
 @app.route('/api')
 @app.route('/api/')
 def api_root():
@@ -51,9 +52,10 @@ def convert():
     output_path = None
 
     try:
-        # Use /tmp for Vercel
-        input_path = f'/tmp/input_{os.getpid()}.docx'
-        output_path = f'/tmp/output_{os.getpid()}.docx'
+        # Use /tmp for Vercel serverless
+        tmp_dir = tempfile.gettempdir()
+        input_path = os.path.join(tmp_dir, f'input_{os.getpid()}.docx')
+        output_path = os.path.join(tmp_dir, f'output_{os.getpid()}.docx')
 
         file.save(input_path)
         process_docx(input_path, output_path)
@@ -76,3 +78,6 @@ def convert():
                     os.remove(path)
                 except:
                     pass
+
+# Vercel requires the Flask app to be exposed as 'app' at module level
+# The @vercel/python builder will handle WSGI automatically
